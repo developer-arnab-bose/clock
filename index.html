@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clock</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        #clock {
+            text-align: center;
+            font-size: 70px;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .container {
+            width: 450px;
+            height: auto;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 5px 5px 10px 5px #80808093;
+            border-radius: 10px;
+        }
+
+        .buttonSection {
+            display: flex;
+            margin: 20px;
+            gap: 20px;
+        }
+
+        .buttonSection button {
+            background: #0f8fe4;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            width: 50%;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 0.07rem;
+        }
+
+        .alermBtn {
+            background: #660080 !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <h1 id="clock">00:00:00 AM</h1>
+
+        <form class="max-w-[8rem] mx-auto times">
+            <label for="time" class="block mb-2 text-sm font-medium text-gray-900">Select time:</label>
+            <div class="relative">
+                <div class="absolute inset-y-0 end-0 top-0 flex items-center pe-3.5 pointer-events-none">
+                    <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                        <path fill-rule="evenodd"
+                            d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm11-4a1 1 0 1 0-2 0v4a1 1 0 0 0 .293.707l3 3a1 1 0 0 0 1.414-1.414L13 11.586V8Z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <input type="time" id="time"
+                    class="bg-gray-50 border leading-none border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                    value="00:00" required />
+            </div>
+        </form>
+        <div class="buttonSection">
+            <button class="timeBtn" onclick="timer()">Start Timer</button>
+            <button class="alermBtn" id="alermBtn">Set Alarm</button>
+        </div>
+    </div>
+
+    <script>
+        let clockTimeoutId = null;
+        let alarmTime = null;
+        let alarmTriggered = false;
+
+        function timeInput() {
+            const time = document.getElementById("time");
+            const [hours, minutes] = time.value.split(":");
+            const timeArray = [parseInt(hours), parseInt(minutes), 0];
+
+            return timeArray;
+        }
+
+        function clockWriter(time) {
+            let hour = time[0] >= 12 ? time[0] - 12 : time[0];
+            let min = time[1].toString().padStart(2, "0");
+            let sec = time[2].toString().padStart(2, "0");
+            document.getElementById("clock").innerHTML = `${hour.toString().padStart(2, "0")}:${min}:${sec} ${time[0] >= 12 ? "PM" : "AM"}`;
+        }
+
+        function secToAll(seconds) {
+            const hour = Math.floor(seconds / 3600);
+            const min = Math.floor((seconds % 3600) / 60);
+            const sec = seconds % 60;
+
+            return [hour, min, sec];
+        }
+
+        function timeaAlert(intervalId, type) {
+            intervalId ? clearInterval(intervalId) : null;
+            alarmTriggered = false;
+            alarmTime = null;
+            const audio = new Audio("alarm.mp3");
+            audio.loop = true;
+
+            audio.play().then(() => {
+                setTimeout(() => {
+                    alert(type ? "Times Up!" : "Alarm Ringing");
+                    audio.pause();
+                    audio.currentTime = 0;
+                    startClock();
+                }, 300);
+            }).catch(err => {
+                console.error("Audio play blocked:", err);
+            });
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const h = now.getHours()
+            const m = now.getMinutes()
+            const s = now.getSeconds()
+
+            if (alarmTime && !alarmTriggered) {
+                if (alarmTime[0] == h && alarmTime[1] == m && s == 0) {
+                    alarmTriggered = true;
+                    timeaAlert();
+                }
+
+                console.log(alarmTime, [h,m,s])
+            }
+
+            return [h, m, s];
+        }
+
+        function startClock() {
+            stopClock();
+            clockWriter(updateClock());
+            const delay = 1000 - (Date.now() % 1000);
+            clockTimeoutId = setTimeout(function tick() {
+
+                let currentTimes = updateClock();
+                clockWriter(currentTimes);
+
+                clockTimeoutId = setTimeout(tick, 1000);
+            }, delay);
+        }
+
+        function stopClock() {
+            if (clockTimeoutId) {
+                clearTimeout(clockTimeoutId);
+                clockTimeoutId = null;
+            }
+        }
+
+        function timer() {
+            stopClock();
+            let timeArr = timeInput();
+            timeArr[0] -= timeArr[0] >= 12 ? 12 : 0;
+            let allSec = timeArr[0] * 3600 + timeArr[1] * 60 + timeArr[0];
+            clockWriter(timeArr)
+            let runner = setInterval(() => {
+                allSec ? clockWriter(secToAll(--allSec)) : timeaAlert(runner, true);
+            }, 1000);
+            document.getElementById("clock").style.color = "#0f8fe4";
+        }
+
+        document.getElementById("alermBtn").addEventListener("click", () => {
+            alarmTime = timeInput();
+            alarmTriggered = false;
+            document.getElementById("clock").style.color = "#660080";
+        })
+
+        startClock();
+    </script>
+
+</body>
+
+</html>
